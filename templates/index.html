@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural Language to SQL Converter</title>
+    <link rel="stylesheet" href="../static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Natural Language to SQL Converter</h1>
+        
+     
+        
+        <div class="upload-section">
+            <h2>1. Upload SQL Schema File</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="file-input-container">
+                    <input type="file" id="sqlFile" name="sqlFile" accept=".sql">
+                    <label for="sqlFile" class="file-input-label">Choose a SQL file</label>
+                    <span id="file-name">No file chosen</span>
+                </div>
+                <button type="submit" class="button">Upload</button>
+            </form>
+            <div id="uploadStatus" class="status"></div>
+        </div>
+        
+        <div class="query-section" id="querySection" style="display: none;">
+            <h2>2. Ask a Question About Your Data</h2>
+            <textarea id="questionInput" placeholder="Example: 'Show me all customers from France'"></textarea>
+            <button id="generateQueryBtn" class="button">Generate SQL Query</button>
+            
+            <div class="results-container">
+                <div class="query-results">
+                    <h3>Generated SQL Query</h3>
+                    <div id="generatedQuery" class="code-block"></div>
+                    <button id="executeQueryBtn" class="button secondary">Execute Query</button>
+                    <button id="editQueryBtn" class="button secondary">Edit Query</button>
+                </div>
+                
+                <div id="queryEditContainer" style="display: none;">
+                    <h3>Edit SQL Query</h3>
+                    <textarea id="queryEditor"></textarea>
+                    <button id="updateQueryBtn" class="button">Update Query</button>
+                </div>
+                
+                <div id="resultsContainer" style="display: none;">
+                    <h3>Query Results</h3>
+                    <div id="executionStatus" class="status"></div>
+                    <div id="queryResults" class="results-table-container">
+                        <table id="resultsTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let currentSchema = "";
+        let currentQuery = "";
+        
+        // DOM elements
+     
+        const uploadForm = document.getElementById('uploadForm');
+        const sqlFileInput = document.getElementById('sqlFile');
+        const fileNameSpan = document.getElementById('file-name');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const querySection = document.getElementById('querySection');
+        const questionInput = document.getElementById('questionInput');
+        const generateQueryBtn = document.getElementById('generateQueryBtn');
+        const generatedQuery = document.getElementById('generatedQuery');
+        const executeQueryBtn = document.getElementById('executeQueryBtn');
+        const editQueryBtn = document.getElementById('editQueryBtn');
+        const queryEditContainer = document.getElementById('queryEditContainer');
+        const queryEditor = document.getElementById('queryEditor');
+        const updateQueryBtn = document.getElementById('updateQueryBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const executionStatus = document.getElementById('executionStatus');
+        const queryResults = document.getElementById('queryResults');
+        const resultsTable = document.getElementById('resultsTable');
+        
+      
+        sqlFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileNameSpan.textContent = e.target.files[0].name;
+            } else {
+                fileNameSpan.textContent = 'No file chosen';
+            }
+        });
+        
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const file = sqlFileInput.files[0];
+            
+            if (!file) {
+                showStatus(uploadStatus, 'Please select a SQL file.', 'error');
+                return;
+            }
+            
+            formData.append('sqlFile', file);
+            
+            try {
+                showStatus(uploadStatus, 'Uploading file...', 'info');
+                
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus(uploadStatus, 'File uploaded successfully!', 'success');
+                    currentSchema = data.schema;
+                    querySection.style.display = 'block';
+                } else {
+                    showStatus(uploadStatus, `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(uploadStatus, `Error: ${error.message}`, 'error');
+            }
+        });
+        
+        generateQueryBtn.addEventListener('click', async () => {
+            const question = questionInput.value.trim();
+            
+            if (!question) {
+                showStatus(executionStatus, 'Please enter a question.', 'error');
+                return;
+            }
+            
+            try {
+                showStatus(executionStatus, 'Generating SQL query...', 'info');
+                
+                const response = await fetch('/generate-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        schema: currentSchema
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentQuery = data.generated_sql;
+                    generatedQuery.textContent = currentQuery;
+                    queryEditor.value = currentQuery;
+ 
+                    console.log("currentQuery &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&",currentQuery)
+
+                    showStatus(executionStatus, 'SQL query generated successfully!', 'success');
+                    
+                    // Show execute button
+                    executeQueryBtn.style.display = 'inline-block';
+                    editQueryBtn.style.display = 'inline-block';
+                    
+                    // Hide results if new query is generated
+                    resultsContainer.style.display = 'none';
+                } else {
+                    showStatus(executionStatus, `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(executionStatus, `Error: ${error.message}`, 'error');
+            }
+        });
+        
+        executeQueryBtn.addEventListener('click', async () => {
+            if (!currentQuery) {
+                showStatus(executionStatus, 'No SQL query to execute.', 'error');
+                return;
+            }
+            
+            try {
+                showStatus(executionStatus, 'Executing SQL query...', 'info');
+                
+                const response = await fetch('/execute-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: currentQuery
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && !data.result.error) {
+                    showStatus(executionStatus, 'Query executed successfully!', 'success');
+                    displayResults(data.result);
+                    resultsContainer.style.display = 'block';
+                } else {
+                    showStatus(executionStatus, `Error: ${data.result.error || data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(executionStatus, `Error: ${error.message}`, 'error');
+            }
+        });
+        
+        editQueryBtn.addEventListener('click', () => {
+            queryEditContainer.style.display = 'block';
+            queryEditor.value = currentQuery;
+        });
+        
+        updateQueryBtn.addEventListener('click', () => {
+            currentQuery = queryEditor.value.trim();
+            generatedQuery.textContent = currentQuery;
+            queryEditContainer.style.display = 'none';
+            resultsContainer.style.display = 'none';
+        });
+        
+        // Helper functions
+        function showStatus(element, message, type) {
+            element.textContent = message;
+            element.className = 'status';
+            element.classList.add(type);
+            element.style.display = 'block';
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    element.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        function displayResults(result) {
+            resultsTable.innerHTML = '';
+            
+            if (!result.columns || result.columns.length === 0) {
+                resultsTable.innerHTML = '<tr><td>No results returned.</td></tr>';
+                return;
+            }
+            
+            // Create table header
+            const headerRow = document.createElement('tr');
+            result.columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column;
+                headerRow.appendChild(th);
+            });
+            resultsTable.appendChild(headerRow);
+            
+            // Create table body
+            result.rows.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell === null ? 'NULL' : cell;
+                    tr.appendChild(td);
+                });
+                resultsTable.appendChild(tr);
+            });
+        }
+        
+        // Clean up resources when leaving the page
+        window.addEventListener('beforeunload', async () => {
+            try {
+                await fetch('/cleanup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('Error cleaning up resources:', error);
+            }
+        });
+    </script>
+</body>
+</html>

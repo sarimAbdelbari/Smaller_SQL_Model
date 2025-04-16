@@ -1,0 +1,43 @@
+Convert the following natural language question to SQL based on this schema:
+
+Table: users
+Columns: id (SERIAL), name (VARCHAR(100)), email (VARCHAR(255)), password (VARCHAR(255)), phone (VARCHAR(20)), address (TEXT)
+
+Table: categories
+Columns: id (SERIAL), name (VARCHAR(100))
+
+Table: products
+Columns: id (SERIAL), name (VARCHAR(255)), description (TEXT), price (DECIMAL(10,2)), stock (INTEGER), category_id (INTEGER), image_url (TEXT)
+
+Table: product_variants
+Columns: id (SERIAL), product_id (INTEGER), variant_name (VARCHAR(100)), variant_value (VARCHAR(100)), price (DECIMAL(10,2))
+
+Table: orders
+Columns: id (SERIAL), user_id (INTEGER), status (VARCHAR(50)), total (DECIMAL(10,2))
+
+Table: order_items
+Columns: id (SERIAL), order_id (INTEGER), product_id (INTEGER), variant_id (INTEGER), quantity (INTEGER), price (DECIMAL(10,2))
+
+Table: payments
+Columns: id (SERIAL), order_id (INTEGER), payment_method (VARCHAR(50)), payment_status (VARCHAR(50)), amount (DECIMAL(10,2))
+
+Table: reviews
+Columns: id (SERIAL), user_id (INTEGER), product_id (INTEGER), rating (INTEGER), comment (TEXT)
+
+Table: wishlists
+Columns: id (SERIAL), user_id (INTEGER), product_id (INTEGER)
+
+Table: carts
+Columns: id (SERIAL), user_id (INTEGER)
+
+Table: cart_items
+Columns: id (SERIAL), cart_id (INTEGER), product_id (INTEGER), variant_id (INTEGER)
+
+Table: shipping_addresses
+Columns: id (SERIAL), user_id (INTEGER), full_name (VARCHAR(100)), phone (VARCHAR(20)), address_line1 (TEXT), address_line2 (TEXT), city (VARCHAR(100)), postal_code (VARCHAR(20))
+
+Question: Retrieve all categories and show the number of products in each category that have more than 10 reviews.
+
+
+
+SQL:
